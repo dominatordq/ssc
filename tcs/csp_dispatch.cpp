@@ -870,7 +870,9 @@ bool csp_dispatch_opt::optimize()
 		}
 		bounds.close();*/
 
-		ofstream qin;
+		/********checking values of parameters for testing*********/
+
+		/*ofstream qin;
 		qin.open("c:/users/dquintan/Documents/Work for Alex/Code/Qin.txt");
 		qin << "Qin" << " " << ceil(params.counter / 2.0) << endl;
 		for (int i = 0; i < nt; i++) {
@@ -886,13 +888,40 @@ bool csp_dispatch_opt::optimize()
 		wnet.open("c:/users/dquintan/Documents/Work for Alex/Code/Wnet.txt");
 		wnet << "Wnet: " << endl;
 		for (int i = 0; i < nt; i++) {
-			wnet << w_lim.at(i) << endl;
+			wnet << i << "	" << w_lim.at(i) << endl;
 		}
+
+		ofstream etac;
+		etac.open("c:/users/dquintan/Documents/Work for Alex/Code/etac.txt");
+		etac << "etac: " << ceil(params.counter / 2.0) << endl;
+		for (int i = 0; i < nt; i++) {
+			etac << i << "	" << outputs.w_condf_expected.at(i) << endl;
+		}
+
+		ofstream lr;
+		lr.open("c:/users/dquintan/Documents/Work for Alex/Code/Lr.txt");
+		lr << "Lr: " << endl;
+		lr << P["Lr"];
+
+		ofstream lc;
+		lc.open("c:/users/dquintan/Documents/Work for Alex/Code/Lc.txt");
+		lc << "Lc: " << endl;
+		lc << P["Lc"];
+
+		ofstream ehs;
+		ehs.open("c:/users/dquintan/Documents/Work for Alex/Code/Ehs.txt");
+		ehs << "Ehs: " << endl;
+		ehs << P["Ehs"];
+
+		ofstream delta;
+		delta.open("c:/users/dquintan/Documents/Work for Alex/Code/delta.txt");
+		delta << "delta: " << endl;
+		delta << P["delta"];*/
 
         /* 
         --------------------------------------------------------------------------------
         set up the constraints
-        --------------------------------------------------------------------------------t
+        --------------------------------------------------------------------------------
         */
 		{
 			//Linearization of the implementation of the piecewise efficiency equation 
@@ -1097,8 +1126,10 @@ bool csp_dispatch_opt::optimize()
 				//heliostat field stow power for different receiver operations
 				row[i] = -P["Ehs"] / P["delta"];
 				col[i++] = O.column("yrsu", t);
+
 				row[i] = -P["Ehs"] / P["delta"];
 				col[i++] = O.column("yrsb", t);
+
 				row[i] = -P["Ehs"] / P["delta"];
 				col[i++] = O.column("yrsd", t);
 
@@ -1236,7 +1267,7 @@ bool csp_dispatch_opt::optimize()
 
                 row[1] = 1.;
                 col[1] = O.column("xrsu", t);
-//#ifdef MOD_REC_STANDBY 
+//#ifdef MOD_CYCLE_SHUTDOWN
 				row[2] = P["Qrsd"];				
 				col[2] = O.column("yrsd", t);		
 //#endif          
