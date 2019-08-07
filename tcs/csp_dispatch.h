@@ -164,10 +164,10 @@ public:
 		double batt_state0;			//[-] Initial state of charge of battery
 		double batt_slope_coeff;	//[V] Battery linear voltage model slope coefficient
 		double batt_int_coeff;		//[V] Battery linear voltage model intercept coefficient
-		double slope_int_plus;		//[kWe] Bi-directional slope-intercept for charge		-- RENAME
-		double slope_int_minus;		//[kWe] Bi-directional slope-intercept for discharge	-- RENAME
-		double slope_plus;			//[-] Bi-directional slope for charge					-- RENAME
-		double slope_minus;			//[-] Bi-directional slope for discharge				-- RENAME
+		double alpha_plus;		//[kWe] Bi-directional slope-intercept for charge		-- RENAME
+		double alpha_minus;		//[kWe] Bi-directional slope-intercept for discharge	-- RENAME
+		double beta_plus;			//[-] Bi-directional slope for charge					-- RENAME
+		double beta_minus;			//[-] Bi-directional slope for discharge				-- RENAME
 		double batt_capacity;		//[kAh] Battery manufacturer-specified capacity
 		double i_expected;			//[A] Typical current expected from the battery for both charge and discharge activities
 		double batt_charge_lb;		//[kA] Battery charge current lower bound
@@ -409,6 +409,7 @@ public:
 
     void add_var(const string &vname, int var_type /* VAR_TYPE enum */, int var_dim /* VAR_DIM enum */, int var_dim_size, REAL lowbo=-DEF_INFINITE, REAL upbo=DEF_INFINITE);
     void add_var(const string &vname, int var_type /* VAR_TYPE enum */, int var_dim /* VAR_DIM enum */, int var_dim_size, int var_dim_size2, REAL lowbo=-DEF_INFINITE, REAL upbo=DEF_INFINITE);
+	void output_parameters();
 
     bool construct();
 

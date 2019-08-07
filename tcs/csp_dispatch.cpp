@@ -156,10 +156,10 @@ csp_dispatch_opt::csp_dispatch_opt()
 
 	params.batt_slope_coeff = numeric_limits<double>::quiet_NaN();
 	params.batt_int_coeff = numeric_limits<double>::quiet_NaN();
-	params.slope_int_plus = numeric_limits<double>::quiet_NaN();
-	params.slope_int_minus = numeric_limits<double>::quiet_NaN();
-	params.slope_plus = numeric_limits<double>::quiet_NaN();
-	params.slope_minus = numeric_limits<double>::quiet_NaN();
+	params.alpha_plus = numeric_limits<double>::quiet_NaN();
+	params.alpha_minus = numeric_limits<double>::quiet_NaN();
+	params.beta_plus = numeric_limits<double>::quiet_NaN();
+	params.beta_minus = numeric_limits<double>::quiet_NaN();
 	params.batt_capacity = numeric_limits<double>::quiet_NaN();
 	params.i_expected = numeric_limits<double>::quiet_NaN();
 	params.batt_charge_lb = numeric_limits<double>::quiet_NaN();
@@ -360,7 +360,7 @@ static void calculate_parameters(csp_dispatch_opt *optinst, unordered_map<std::s
         pars["Wh"] = optinst->params.w_track;
         pars["Wb"] = optinst->params.w_cycle_standby;
         pars["Ehs"] = optinst->params.w_stow;
-        pars["Wrsb"] = optinst->params.w_rec_ht;
+        pars["Wht"] = optinst->params.w_rec_ht;
         pars["eta_cycle"] = optinst->params.eta_cycle_ref;
         pars["Qrsd"] = 0.;      //<< not yet modeled, passing temporarily as zero
 
@@ -870,7 +870,9 @@ bool csp_dispatch_opt::optimize()
 		}
 		bounds.close();*/
 
-		ofstream qin;
+		/********checking values of parameters for testing*********/
+
+		/*ofstream qin;
 		qin.open("c:/users/dquintan/Documents/Work for Alex/Code/Qin.txt");
 		qin << "Qin" << " " << ceil(params.counter / 2.0) << endl;
 		for (int i = 0; i < nt; i++) {
@@ -886,13 +888,86 @@ bool csp_dispatch_opt::optimize()
 		wnet.open("c:/users/dquintan/Documents/Work for Alex/Code/Wnet.txt");
 		wnet << "Wnet: " << endl;
 		for (int i = 0; i < nt; i++) {
-			wnet << w_lim.at(i) << endl;
+			wnet << i << "	" << w_lim.at(i) << endl;
 		}
 
+		ofstream etac;
+		etac.open("c:/users/dquintan/Documents/Work for Alex/Code/etac.txt");
+		etac << "etac: " << ceil(params.counter / 2.0) << endl;
+		for (int i = 0; i < nt; i++) {
+			etac << i << "	" << outputs.w_condf_expected.at(i) << endl;
+		}
+
+		ofstream lr;
+		lr.open("c:/users/dquintan/Documents/Work for Alex/Code/Lr.txt");
+		lr << "Lr: " << endl;
+		lr << P["Lr"];
+
+		ofstream lc;
+		lc.open("c:/users/dquintan/Documents/Work for Alex/Code/Lc.txt");
+		lc << "Lc: " << endl;
+		lc << P["Lc"];
+
+		ofstream ehs;
+		ehs.open("c:/users/dquintan/Documents/Work for Alex/Code/Ehs.txt");
+		ehs << "Ehs: " << endl;
+		ehs << P["Ehs"];
+
+		ofstream delta;
+		delta.open("c:/users/dquintan/Documents/Work for Alex/Code/delta.txt");
+		delta << "delta: " << endl;
+		delta << P["delta"];*/
+
+		//move this to other function
+		ofstream out;
+		out.open("c:/users/dquintan/Documents/Work for Alex/Code/Time_Indexed_Parameters.txt");
+		out << "delta_rs: " << "day " << floor(params.counter / 2.0) << endl;
+		for (int i = 0; i < nt; i++) {
+			out << i << "	" << outputs.delta_rs.at(i) << endl;
+		}
+		out << endl;
+		out << "eta_amb: " << "day " << floor(params.counter / 2.0) << endl;
+		for (int i = 0; i < nt; i++) {
+			out << i << "	" << outputs.eta_pb_expected.at(i) << endl;
+		}
+		out << endl;
+		out << "eta_c: " << "day " << floor(params.counter / 2.0) << endl;
+		for (int i = 0; i < nt; i++) {
+			out << i << "	" << outputs.w_condf_expected.at(i) << endl;
+		}
+		out << endl;
+		out << "Electricity sales ($/kWhe): " << "day " << floor(params.counter / 2.0) << endl;
+		for (int i = 0; i < nt; i++) {
+			out << i << "	" << price_signal.at(i) << endl;
+		}
+		out << endl;
+		out << "Qin: " << "day " << floor(params.counter / 2.0) << endl;
+		for (int i = 0; i < nt; i++) {
+			out << i << "	" << outputs.q_sfavail_expected.at(i) << endl;
+		}
+		out << endl;
+		out << "Wdc: " << "day " << floor(params.counter / 2.0) << endl;
+		for (int i = 0; i < nt; i++) {
+			out << i << "	" << outputs.w_dc_field.at(i) << endl;
+		}
+		out << endl;
+		out << "Wnet: " << "day " << floor(params.counter / 2.0) << endl;
+		for (int i = 0; i < nt; i++) {
+			out << i << "	" << w_lim.at(i) << endl;
+		}
+		out << endl;
+		out.close();
+
+		ofstream battery_params;
+		battery_params.open("c:/users/dquintan/Documents/Work for Alex/Code/Battery_Parameters.txt");
+		battery_params << "Av = " << P["Av"] << endl;
+		battery_params << "alpha+ = " << params.alpha_plus << endl;
+		battery_params << "alpha- = " << params.alpha_minus << endl;
+		battery_params << "Bv = " << P["Bv"] << endl;
         /* 
         --------------------------------------------------------------------------------
         set up the constraints
-        --------------------------------------------------------------------------------t
+        --------------------------------------------------------------------------------
         */
 		{
 			//Linearization of the implementation of the piecewise efficiency equation 
@@ -909,7 +984,7 @@ bool csp_dispatch_opt::optimize()
 				row[i] = -P["etap"] * (outputs.eta_pb_expected.at(t) / params.eta_cycle_ref);
 				col[i++] = O.column("x", t);
 
-				row[i] = -(P["Wdotu"] - P["etap"] * P["Qu"])*(outputs.eta_pb_expected.at(t) / params.eta_cycle_ref);
+				row[i] = -(P["Wdotu"] - (P["etap"] * P["Qu"]))*(outputs.eta_pb_expected.at(t) / params.eta_cycle_ref);
 				col[i++] = O.column("y", t);
 
 				/*row[i] = -P["Wdotu"] * (outputs.eta_pb_expected.at(t) / params.eta_cycle_ref);
@@ -1051,15 +1126,15 @@ bool csp_dispatch_opt::optimize()
 				col[i++] = O.column("wdot", t);
 
 				//battery discharge power accounting for DC-to-AC conversion losses
-				row[i] = 1.0 / (1.0 + params.slope_minus);
+				row[i] = 1.0 / (1.0 + params.beta_minus);
 				col[i++] = O.column("wdot-", t);
-				row[i] = -params.slope_int_minus / (1.0 + params.slope_minus);
+				row[i] = -params.alpha_minus / (1.0 + params.beta_minus);
 				col[i++] = O.column("y-", t);
 
 				//battery charge power accounting for AC-to-DC conversion losses
-				row[i] = -(1.0 + params.slope_plus);
+				row[i] = -(1.0 + params.beta_plus);
 				col[i++] = O.column("wdot+", t);
-				row[i] = -params.slope_int_plus;
+				row[i] = -params.alpha_plus;
 				col[i++] = O.column("y+", t);
 
 				//PV field generation less power used for battery charging directly from the field, accounting for inverter losses
@@ -1091,14 +1166,16 @@ bool csp_dispatch_opt::optimize()
 				col[i++] = O.column("ycsb", t);
 
 				//tower piping heat trace for receiver start-up
-				row[i] = -P["Wrsb"];
+				row[i] = -P["Wht"];
 				col[i++] = O.column("yrsu", t);
 
 				//heliostat field stow power for different receiver operations
 				row[i] = -P["Ehs"] / P["delta"];
 				col[i++] = O.column("yrsu", t);
+
 				row[i] = -P["Ehs"] / P["delta"];
 				col[i++] = O.column("yrsb", t);
+
 				row[i] = -P["Ehs"] / P["delta"];
 				col[i++] = O.column("yrsd", t);
 
@@ -1236,7 +1313,7 @@ bool csp_dispatch_opt::optimize()
 
                 row[1] = 1.;
                 col[1] = O.column("xrsu", t);
-//#ifdef MOD_REC_STANDBY 
+//#ifdef MOD_CYCLE_SHUTDOWN
 				row[2] = P["Qrsd"];				
 				col[2] = O.column("yrsd", t);		
 //#endif          
@@ -2275,7 +2352,7 @@ bool csp_dispatch_opt::optimize()
 
 			double tadj = P["disp_time_weighting"];
 
-			//rewritten starting line 2210
+			//rewritten starting line 2327
 			/*for (int t = 0; t < nt; t++)
 			{
 				int i = 0;
@@ -3001,6 +3078,10 @@ void optimization_vars::add_var(const string &vname, int var_type /* VAR_TYPE en
     current_mem_pos += mem_size;
 
     
+}
+
+void optimization_vars::output_parameters() {
+	return;
 }
 
 bool optimization_vars::construct()

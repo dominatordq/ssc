@@ -717,10 +717,10 @@ void C_csp_solver::Ssimulate(C_csp_solver::S_sim_setup & sim_setup)
 	{
 		dispatch.params.batt_slope_coeff = mc_tou.mc_dispatch_params.m_batt_slope_coeff;
 		dispatch.params.batt_int_coeff = mc_tou.mc_dispatch_params.m_batt_int_coeff;
-		dispatch.params.slope_int_plus = mc_tou.mc_dispatch_params.m_slope_int_plus;
-		dispatch.params.slope_int_minus = mc_tou.mc_dispatch_params.m_slope_int_minus;
-		dispatch.params.slope_plus = mc_tou.mc_dispatch_params.m_slope_plus;
-		dispatch.params.slope_minus = mc_tou.mc_dispatch_params.m_slope_minus;
+		dispatch.params.alpha_plus = mc_tou.mc_dispatch_params.m_slope_int_plus;
+		dispatch.params.alpha_minus = mc_tou.mc_dispatch_params.m_slope_int_minus;
+		dispatch.params.beta_plus = mc_tou.mc_dispatch_params.m_slope_plus;
+		dispatch.params.beta_minus = mc_tou.mc_dispatch_params.m_slope_minus;
 		dispatch.params.batt_capacity = mc_tou.mc_dispatch_params.m_batt_capacity;
 		dispatch.params.i_expected = mc_tou.mc_dispatch_params.m_i_expected;
 		dispatch.params.batt_charge_lb = mc_tou.mc_dispatch_params.m_batt_charge_lb;
