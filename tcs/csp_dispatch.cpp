@@ -919,7 +919,7 @@ bool csp_dispatch_opt::optimize()
 		delta << "delta: " << endl;
 		delta << P["delta"];*/
 
-		O.output_parameters(this, P, nt);
+		//O.output_parameters(this, P, nt);
 
         /* 
         --------------------------------------------------------------------------------
