@@ -384,6 +384,7 @@ static void calculate_parameters(csp_dispatch_opt *optinst, unordered_map<std::s
         pars["M"] = 1.e6;
         pars["W_dot_cycle"] = optinst->params.q_pb_des * optinst->params.eta_cycle_ref;
 
+		pars["delta_l"] = 0.2;
 		/***PV Hybrid parameters***/
 
 		//Battery parameters
@@ -401,7 +402,7 @@ static void calculate_parameters(csp_dispatch_opt *optinst, unordered_map<std::s
 		pars["Sb_min"] = optinst->params.batt_soc_min;
 		pars["Sb_max"] = optinst->params.batt_soc_max;
 
-		//Cost parameters
+		//Cost penalty parameters
 		pars["Crhsp"] = optinst->params.pen_rec_hot_su;
 		pars["Cchsp"] = optinst->params.pen_pc_hot_su;
 
@@ -918,52 +919,8 @@ bool csp_dispatch_opt::optimize()
 		delta << "delta: " << endl;
 		delta << P["delta"];*/
 
-		//move this to other function
-		ofstream out;
-		out.open("c:/users/dquintan/Documents/Work for Alex/Code/Time_Indexed_Parameters.txt");
-		out << "delta_rs: " << "day " << floor(params.counter / 2.0) << endl;
-		for (int i = 0; i < nt; i++) {
-			out << i << "	" << outputs.delta_rs.at(i) << endl;
-		}
-		out << endl;
-		out << "eta_amb: " << "day " << floor(params.counter / 2.0) << endl;
-		for (int i = 0; i < nt; i++) {
-			out << i << "	" << outputs.eta_pb_expected.at(i) << endl;
-		}
-		out << endl;
-		out << "eta_c: " << "day " << floor(params.counter / 2.0) << endl;
-		for (int i = 0; i < nt; i++) {
-			out << i << "	" << outputs.w_condf_expected.at(i) << endl;
-		}
-		out << endl;
-		out << "Electricity sales ($/kWhe): " << "day " << floor(params.counter / 2.0) << endl;
-		for (int i = 0; i < nt; i++) {
-			out << i << "	" << price_signal.at(i) << endl;
-		}
-		out << endl;
-		out << "Qin: " << "day " << floor(params.counter / 2.0) << endl;
-		for (int i = 0; i < nt; i++) {
-			out << i << "	" << outputs.q_sfavail_expected.at(i) << endl;
-		}
-		out << endl;
-		out << "Wdc: " << "day " << floor(params.counter / 2.0) << endl;
-		for (int i = 0; i < nt; i++) {
-			out << i << "	" << outputs.w_dc_field.at(i) << endl;
-		}
-		out << endl;
-		out << "Wnet: " << "day " << floor(params.counter / 2.0) << endl;
-		for (int i = 0; i < nt; i++) {
-			out << i << "	" << w_lim.at(i) << endl;
-		}
-		out << endl;
-		out.close();
+		O.output_parameters(this, P, nt);
 
-		ofstream battery_params;
-		battery_params.open("c:/users/dquintan/Documents/Work for Alex/Code/Battery_Parameters.txt");
-		battery_params << "Av = " << P["Av"] << endl;
-		battery_params << "alpha+ = " << params.alpha_plus << endl;
-		battery_params << "alpha- = " << params.alpha_minus << endl;
-		battery_params << "Bv = " << P["Bv"] << endl;
         /* 
         --------------------------------------------------------------------------------
         set up the constraints
@@ -3080,7 +3037,128 @@ void optimization_vars::add_var(const string &vname, int var_type /* VAR_TYPE en
     
 }
 
-void optimization_vars::output_parameters() {
+void optimization_vars::output_parameters(csp_dispatch_opt *optinst, unordered_map<std::string, double> &pars, int nt) {
+	ofstream out;
+	out.open("c:/users/dquintan/Documents/Work for Alex/Code/Time_Indexed_Parameters.txt");
+	out << "delta_rs: " << "day " << floor(optinst->params.counter / 2.0) << endl;
+	for (int i = 0; i < nt; i++) {
+		out << i << "	" << optinst->outputs.delta_rs.at(i) << endl;
+	}
+	out << endl;
+	out << "eta_amb: " << "day " << floor(optinst->params.counter / 2.0) << endl;
+	for (int i = 0; i < nt; i++) {
+		out << i << "	" << optinst->outputs.eta_pb_expected.at(i) << endl;
+	}
+	out << endl;
+	out << "eta_c: " << "day " << floor(optinst->params.counter / 2.0) << endl;
+	for (int i = 0; i < nt; i++) {
+		out << i << "	" << optinst->outputs.w_condf_expected.at(i) << endl;
+	}
+	out << endl;
+	out << "Electricity sales ($/kWhe): " << "day " << floor(optinst->params.counter / 2.0) << endl;
+	for (int i = 0; i < nt; i++) {
+		out << i << "	" << optinst->price_signal.at(i) << endl;
+	}
+	out << endl;
+	out << "Qin: " << "day " << floor(optinst->params.counter / 2.0) << endl;
+	for (int i = 0; i < nt; i++) {
+		out << i << "	" << optinst->outputs.q_sfavail_expected.at(i) << endl;
+	}
+	out << endl;
+	out << "Wdc: " << "day " << floor(optinst->params.counter / 2.0) << endl;
+	for (int i = 0; i < nt; i++) {
+		out << i << "	" << optinst->outputs.w_dc_field.at(i) << endl;
+	}
+	out << endl;
+	out << "Wnet: " << "day " << floor(optinst->params.counter / 2.0) << endl;
+	for (int i = 0; i < nt; i++) {
+		out << i << "	" << optinst->w_lim.at(i) << endl;
+	}
+	out << endl;
+	out.close();
+
+	ofstream battery_params;
+	battery_params.open("c:/users/dquintan/Documents/Work for Alex/Code/Battery_Parameters.txt");
+	battery_params << "Av = " << pars["Av"] << endl;
+	battery_params << "alpha+ = " << optinst->params.alpha_plus << endl;
+	battery_params << "alpha- = " << optinst->params.alpha_minus << endl;
+	battery_params << "Bv = " << pars["Bv"] << endl;
+	battery_params << "beta+ = " << optinst->params.beta_plus << endl;
+	battery_params << "beta- = " << optinst->params.beta_minus << endl;
+	battery_params << "Cb = " << pars["Cb"] << endl;
+	battery_params << "Iavg = " << pars["Iavg"] << endl;
+	battery_params << "IL+ = " << pars["Il+"] << endl;
+	battery_params << "IU+ = " << pars["Iu+"] << endl;
+	battery_params << "IL- = " << pars["Il-"] << endl;
+	battery_params << "IU- = " << pars["Iu-"] << endl;
+	battery_params << "Pb_min = " << pars["Pb_min"] << endl;
+	battery_params << "Pb_max = " << pars["Pb_max"] << endl;
+	battery_params << "Rint = " << pars["Rint"] << endl;
+	battery_params << "Sb_min = " << pars["Sb_min"] << endl;
+	battery_params << "Sb_max = " << pars["Sb_max"] << endl;
+	battery_params.close();
+
+	ofstream cost_params;
+	cost_params.open("c:/users/dquintan/Documents/Work for Alex/Code/Cost_Parameters.txt");
+	cost_params << "Crec = " << pars["Crec"] << endl;
+	cost_params << "Crsu = " << pars["rsu_cost"] << endl;
+	cost_params << "Crhsp = " << pars["Crhsp"] << endl;
+	cost_params << "Cpc = " << pars["Cpc"] << endl;
+	cost_params << "Ccsu = " << pars["csu_cost"] << endl;
+	cost_params << "Cchsp = " << pars["Cchsp"] << endl;
+	cost_params << "C_deltaw = " << pars["pen_delta_w"] << endl;
+	cost_params << "Ccsb = " << pars["Ccsb"] << endl;
+	cost_params << "Cpv = " << pars["Cpv"] << endl;
+	cost_params << "Cbc = " << pars["Cbc"] << endl;
+	cost_params << "Cbd = " << pars["Cbd"] << endl;
+	cost_params << "Cbl = " << pars["Cbl"] << endl;
+	cost_params.close();
+
+	ofstream csp_params;
+	csp_params.open("c:/users/dquintan/Documents/Work for Alex/Code/CSP_Field_and_Receiver_Parameters.txt");
+	csp_params << "delta_l = " << pars["delta_l"] << endl;
+	csp_params << "Ehs = " << pars["Ehs"] << endl;
+	csp_params << "Er = " << pars["Er"] << endl;
+	csp_params << "Eu = " << pars["Eu"] << endl;
+	csp_params << "Lr = " << pars["Lr"] << endl;
+	csp_params << "Qrl = " << pars["Qrl"] << endl;
+	csp_params << "Qrsb = " << pars["Qrsb"] << endl;
+	csp_params << "Qrsd = " << pars["Qrsd"] << endl; 
+	csp_params << "Qru = " << pars["Qru"] << endl;
+	csp_params << "Wh = " << pars["Wh"] << endl;
+	csp_params << "Wht = " << pars["Wht"] << endl;
+	csp_params.close();
+
+	ofstream pc_params;
+	pc_params.open("c:/users/dquintan/Documents/Work for Alex/Code/Power_Cycle_Parameters.txt");
+	pc_params << "delta_w_lim = " << pars["w_delta_lim"] << endl;
+	pc_params << "Ec = " << pars["Ec"] << endl;
+	pc_params << "n_des = " << optinst->params.eta_cycle_ref << endl;
+	pc_params << "n_p = " << pars["etap"] << endl;
+	pc_params << "Lc = " << pars["Lc"] << endl;
+	pc_params << "Qb = " << pars["Qb"] << endl;
+	pc_params << "Qc = " << pars["Qc"] << endl;
+	pc_params << "Ql = " << pars["Ql"] << endl;
+	pc_params << "Qu = " << pars["Qu"] << endl;
+	pc_params << "Wb = " << pars["Wb"] << endl;
+	pc_params << "Wu = " << pars["Wdotu"] << endl;
+	pc_params.close();
+
+	ofstream pv_params;
+	pv_params.open("c:/users/dquintan/Documents/Work for Alex/Code/PV_Parameters.txt");
+	pv_params << "alpha_pv = " << pars["Apv"] << endl;
+	pv_params << "beta_pv = " << pars["Bpv"] << endl;
+	pv_params << "Wi = " << pars["Wi"] << endl;
+	pv_params.close();
+
+	ofstream misc_params;
+	misc_params.open("c:/users/dquintan/Documents/Work for Alex/Code/Misc_Parameters.txt");
+	misc_params << "alpha = " << optinst->params.alpha << endl;
+	misc_params << "delta = " << pars["delta"] << endl;
+	misc_params << "M = " << pars["M"] << endl;
+	misc_params << "gamma = " << pars["disp_time_weighting"] << endl;
+	misc_params << "epsilon = " << pars["eps"] << endl;
+	misc_params.close();
 	return;
 }
 

@@ -409,7 +409,7 @@ public:
 
     void add_var(const string &vname, int var_type /* VAR_TYPE enum */, int var_dim /* VAR_DIM enum */, int var_dim_size, REAL lowbo=-DEF_INFINITE, REAL upbo=DEF_INFINITE);
     void add_var(const string &vname, int var_type /* VAR_TYPE enum */, int var_dim /* VAR_DIM enum */, int var_dim_size, int var_dim_size2, REAL lowbo=-DEF_INFINITE, REAL upbo=DEF_INFINITE);
-	void output_parameters();
+	void output_parameters(csp_dispatch_opt *optinst, unordered_map<std::string, double> &pars, int nt);
 
     bool construct();
 
