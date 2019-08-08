@@ -291,7 +291,8 @@ public:
 		std::vector<double> m_w_lim_full;
 
 		//Hybrid 
-		bool m_hybrid_optimize;
+		bool m_battery_optimize;
+		bool m_pv_optimize;
 		double m_batt_slope_coeff;
 		double m_batt_int_coeff;
 		double m_slope_int_plus;
@@ -370,7 +371,8 @@ public:
 			m_w_lim_full.assign(8760, 9.e99);
 
 			//Hybrid params (may not need to explicitly define values here, but in cmod_tcsmolten_salt)
-			m_hybrid_optimize = false;
+			m_battery_optimize = false;
+			m_pv_optimize = false;
 			m_batt_slope_coeff = 46.36980;
 			m_batt_int_coeff = 176.9472;
 			m_slope_int_plus = 236.10597;

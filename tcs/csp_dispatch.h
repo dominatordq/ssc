@@ -158,6 +158,9 @@ public:
 
 		int counter;				//[-] Count variable used to keep track of iterations
 
+		bool battery_optimize;
+		bool pv_optimize;
+
 		/***PV Hybrid new parameters***/
 		
 		//Battery parameters

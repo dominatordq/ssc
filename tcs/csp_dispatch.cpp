@@ -343,7 +343,8 @@ static void calculate_parameters(csp_dispatch_opt *optinst, unordered_map<std::s
     A central location for making sure the parameters from the model are accurately calculated for use in
     the dispatch optimization model. 
     */
-
+		pars["is_battery"] = optinst->params.battery_optimize;
+		pars["is_pv"] = optinst->params.pv_optimize;
         pars["T"] = nt ;
         pars["delta"] = optinst->params.dt;
         pars["Eu"] = optinst->params.e_tes_max ;
@@ -707,11 +708,11 @@ bool csp_dispatch_opt::optimize()
 			}
 		}
 		//write output of w_dc_field to a file
-		ofstream pv_out("w_dc_field.txt");
+		/*ofstream pv_out("w_dc_field.txt");
 		pv_out << "wpv_dc:" << endl;
 		for (int i = 0; i < outputs.w_dc_field.size(); i++) {
 			pv_out << outputs.w_dc_field.at(i) << endl;
-		}
+		}*/
 
         /* 
         --------------------------------------------------------------------------------
@@ -3133,8 +3134,8 @@ void optimization_vars::output_parameters(csp_dispatch_opt *optinst, unordered_m
 	pc_params.open("c:/users/dquintan/Documents/Work for Alex/Code/Power_Cycle_Parameters.txt");
 	pc_params << "delta_w_lim = " << pars["w_delta_lim"] << endl;
 	pc_params << "Ec = " << pars["Ec"] << endl;
-	pc_params << "n_des = " << optinst->params.eta_cycle_ref << endl;
-	pc_params << "n_p = " << pars["etap"] << endl;
+	pc_params << "eta_des = " << optinst->params.eta_cycle_ref << endl;
+	pc_params << "eta_p = " << pars["etap"] << endl;
 	pc_params << "Lc = " << pars["Lc"] << endl;
 	pc_params << "Qb = " << pars["Qb"] << endl;
 	pc_params << "Qc = " << pars["Qc"] << endl;

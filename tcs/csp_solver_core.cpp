@@ -636,6 +636,12 @@ void C_csp_solver::Ssimulate(C_csp_solver::S_sim_setup & sim_setup)
 		dispatch.params.w_cycle_standby = dispatch.params.q_pb_standby*dispatch.params.w_cycle_pump; //kWe
 		dispatch.params.w_ramp_limit = mc_tou.mc_dispatch_params.m_w_ramp_limit;	//kWe
 
+		dispatch.params.rec_helio_cost = mc_tou.mc_dispatch_params.m_rec_helio_cost / 1000;
+		dispatch.params.pc_cost = mc_tou.mc_dispatch_params.m_pc_cost / 1000;
+		dispatch.params.pc_sb_cost = mc_tou.mc_dispatch_params.m_pc_sb_cost / 1000;
+		dispatch.params.pen_rec_hot_su = mc_tou.mc_dispatch_params.m_pen_rec_hot_su / 1000;
+		dispatch.params.pen_pc_hot_su = mc_tou.mc_dispatch_params.m_pen_pc_hot_su / 1000;
+
 		//Cycle efficiency
 		dispatch.params.eff_table_load.clear();
 		//add zero point
@@ -711,9 +717,11 @@ void C_csp_solver::Ssimulate(C_csp_solver::S_sim_setup & sim_setup)
 	double progress_msg_frac_current = progress_msg_interval_frac;
 
 	dispatch.params.alpha = mc_tou.mc_dispatch_params.m_alpha;
+	dispatch.params.battery_optimize = mc_tou.mc_dispatch_params.m_battery_optimize;
+	dispatch.params.pv_optimize = mc_tou.mc_dispatch_params.m_pv_optimize;
 
 	//if hybrid system turned on
-	if (mc_tou.mc_dispatch_params.m_hybrid_optimize)
+	if (mc_tou.mc_dispatch_params.m_battery_optimize)
 	{
 		dispatch.params.batt_slope_coeff = mc_tou.mc_dispatch_params.m_batt_slope_coeff;
 		dispatch.params.batt_int_coeff = mc_tou.mc_dispatch_params.m_batt_int_coeff;
@@ -733,19 +741,18 @@ void C_csp_solver::Ssimulate(C_csp_solver::S_sim_setup & sim_setup)
 		dispatch.params.batt_soc_min = mc_tou.mc_dispatch_params.m_batt_soc_min;
 		dispatch.params.batt_soc_max = mc_tou.mc_dispatch_params.m_batt_soc_max;
 
+		dispatch.params.batt_charge_cost = mc_tou.mc_dispatch_params.m_batt_charge_cost / 1000;
+		dispatch.params.batt_discharge_cost = mc_tou.mc_dispatch_params.m_batt_discharge_cost / 1000;
+		dispatch.params.batt_lifecycle_cost = mc_tou.mc_dispatch_params.m_batt_lifecycle_cost;
+	}
+
+	if (mc_tou.mc_dispatch_params.m_pv_optimize)
+	{
 		dispatch.params.w_dc_pl = mc_tou.mc_dispatch_params.m_w_dc_pl;
 		dispatch.params.alpha_pv = mc_tou.mc_dispatch_params.m_alpha_pv;
 		dispatch.params.beta_pv = mc_tou.mc_dispatch_params.m_beta_pv;
 
-		dispatch.params.rec_helio_cost = mc_tou.mc_dispatch_params.m_rec_helio_cost / 1000;
-		dispatch.params.pc_cost = mc_tou.mc_dispatch_params.m_pc_cost / 1000;
-		dispatch.params.pc_sb_cost = mc_tou.mc_dispatch_params.m_pc_sb_cost / 1000;
 		dispatch.params.pv_field_cost = mc_tou.mc_dispatch_params.m_pv_field_cost / 1000;
-		dispatch.params.batt_charge_cost = mc_tou.mc_dispatch_params.m_batt_charge_cost / 1000;
-		dispatch.params.batt_discharge_cost = mc_tou.mc_dispatch_params.m_batt_discharge_cost / 1000;
-		dispatch.params.batt_lifecycle_cost = mc_tou.mc_dispatch_params.m_batt_lifecycle_cost;
-		dispatch.params.pen_rec_hot_su = mc_tou.mc_dispatch_params.m_pen_rec_hot_su / 1000;
-		dispatch.params.pen_pc_hot_su = mc_tou.mc_dispatch_params.m_pen_pc_hot_su / 1000;
 	}
 
     /* 
