@@ -353,7 +353,8 @@ static var_info _cm_vtab_tcsmolten_salt[] = {
 	{ SSC_INPUT,     SSC_NUMBER, "disp_w_ramp_limit",				   "Power cycle ramp limit",																												  "kWe",		  "",                                  "System Control",                           "is_dispatch=1",                                                    "",              "" },
 
 	// Hybrid inputs
-	{ SSC_INPUT,     SSC_NUMBER, "is_battery",						   "Allow battery optimization?",																											  "",			  "",                                  "System Control",                           "?=0",			                                                   "",              "" },
+	{ SSC_INPUT,     SSC_NUMBER, "is_battery",						   "Allow battery optimization?",																											  "",			  "",                                  "System Control",                           "?=0",			                                                    "",              "" },
+	{ SSC_INPUT,     SSC_NUMBER, "is_pv",							   "Allow PV optimization?",																												  "",			  "",                                  "System Control",                           "?=0",			                                                    "",              "" },
 	{ SSC_INPUT,     SSC_NUMBER, "hyb_batt_slope_coeff",               "Battery linear voltage model slope coefficient",                                                                                          "V",            "",                                  "System Control",                           "is_battery=1",                                                      "",              "" },
 	{ SSC_INPUT,     SSC_NUMBER, "hyb_batt_int_coeff",                 "Battery linear voltage model intercept coefficient",                                                                                      "V",            "",                                  "System Control",                           "is_battery=1",                                                      "",              "" },
 	{ SSC_INPUT,     SSC_NUMBER, "hyb_slope_int_plus",                 "Bi-directional slope-intercept for charge",																								  "kWe",          "",                                  "System Control",                           "is_battery=1",                                                      "",              "" },
@@ -1737,6 +1738,12 @@ public:
 			tou.mc_dispatch_params.m_w_rec_ht = as_double("q_rec_heattrace");
 			tou.mc_dispatch_params.m_w_ramp_limit = as_double("disp_w_ramp_limit");
 
+			tou.mc_dispatch_params.m_rec_helio_cost = as_double("hyb_rec_helio_cost");
+			tou.mc_dispatch_params.m_pc_cost = as_double("hyb_pc_cost");
+			tou.mc_dispatch_params.m_pc_sb_cost = as_double("hyb_pc_sb_cost");
+			tou.mc_dispatch_params.m_pen_rec_hot_su = as_double("hyb_pen_rec_hot_su");
+			tou.mc_dispatch_params.m_pen_pc_hot_su = as_double("hyb_pen_pc_hot_su");
+
 			if (as_boolean("is_wlim_series"))
 			{
 				size_t n_wlim_series = 0;
@@ -1756,9 +1763,10 @@ public:
 		tou.mc_dispatch_params.m_q_dot_rec_des_mult = -1.23;
 		tou.mc_dispatch_params.m_f_q_dot_pc_overwrite = -1.23;
 
-		tou.mc_dispatch_params.m_hybrid_optimize = as_boolean("is_battery");
+		tou.mc_dispatch_params.m_battery_optimize = as_boolean("is_battery");
+		tou.mc_dispatch_params.m_pv_optimize = as_boolean("is_pv");
 
-		if (tou.mc_dispatch_params.m_hybrid_optimize)
+		if (tou.mc_dispatch_params.m_battery_optimize)
 		{
 			tou.mc_dispatch_params.m_batt_slope_coeff = as_double("hyb_batt_slope_coeff");
 			tou.mc_dispatch_params.m_batt_int_coeff = as_double("hyb_batt_int_coeff");
@@ -1778,19 +1786,18 @@ public:
 			tou.mc_dispatch_params.m_batt_soc_min = as_double("hyb_batt_soc_min");
 			tou.mc_dispatch_params.m_batt_soc_max = as_double("hyb_batt_soc_max");
 
+			tou.mc_dispatch_params.m_batt_charge_cost = as_double("hyb_batt_charge_cost");
+			tou.mc_dispatch_params.m_batt_discharge_cost = as_double("hyb_batt_discharge_cost");
+			tou.mc_dispatch_params.m_batt_lifecycle_cost = as_double("hyb_batt_lifecycle_cost");
+		}
+
+		if (tou.mc_dispatch_params.m_pv_optimize)
+		{
 			tou.mc_dispatch_params.m_w_dc_pl = as_double("hyb_w_dc_pl");
 			tou.mc_dispatch_params.m_alpha_pv = as_double("hyb_alpha_pv");
 			tou.mc_dispatch_params.m_beta_pv = as_double("hyb_beta_pv");
 
-			tou.mc_dispatch_params.m_rec_helio_cost = as_double("hyb_rec_helio_cost");
-			tou.mc_dispatch_params.m_pc_cost = as_double("hyb_pc_cost");
-			tou.mc_dispatch_params.m_pc_sb_cost = as_double("hyb_pc_sb_cost");
 			tou.mc_dispatch_params.m_pv_field_cost = as_double("hyb_pv_field_cost");
-			tou.mc_dispatch_params.m_batt_charge_cost = as_double("hyb_batt_charge_cost");
-			tou.mc_dispatch_params.m_batt_discharge_cost = as_double("hyb_batt_discharge_cost");
-			tou.mc_dispatch_params.m_batt_lifecycle_cost = as_double("hyb_batt_lifecycle_cost");
-			tou.mc_dispatch_params.m_pen_rec_hot_su = as_double("hyb_pen_rec_hot_su");
-			tou.mc_dispatch_params.m_pen_pc_hot_su = as_double("hyb_pen_pc_hot_su");
 		}
 
         size_t n_f_turbine = 0;
