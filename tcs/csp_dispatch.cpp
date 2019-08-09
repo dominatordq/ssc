@@ -814,7 +814,7 @@ bool csp_dispatch_opt::optimize()
 
 				col[t + nt * (i)] = O.column("ycsb", t);
 				row[t + nt * (i++)] = -(1. / pow(tadj, t)) * P["delta"] * P["Ccsb"] * P["Qb"];
-			if (params.pv_optimize && params.battery_optimize) {
+			if (params.pv_optimize) {
 				col[t + nt * (i)] = O.column("wdot_pv", t);
 				row[t + nt * (i++)] = -(1. / pow(tadj, t)) * P["delta"] * P["Cpv"];
 			}
