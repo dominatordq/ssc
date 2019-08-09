@@ -814,6 +814,7 @@ bool csp_dispatch_opt::optimize()
 
 				col[t + nt * (i)] = O.column("ycsb", t);
 				row[t + nt * (i++)] = -(1. / pow(tadj, t)) * P["delta"] * P["Ccsb"] * P["Qb"];
+
 			if (params.pv_optimize) {
 				col[t + nt * (i)] = O.column("wdot_pv", t);
 				row[t + nt * (i++)] = -(1. / pow(tadj, t)) * P["delta"] * P["Cpv"];
@@ -828,6 +829,7 @@ bool csp_dispatch_opt::optimize()
 				col[t + nt * (i)] = O.column("bc", 0);
 				row[t + nt * (i++)] = -P["Cbl"];
 			}
+
 				col[t + nt * (i)] = O.column("xr", t);
 				row[t + nt * (i++)] = -(1. / pow(tadj, t)) * P["delta"] * P["Crec"];
 
