@@ -386,6 +386,7 @@ static void calculate_parameters(csp_dispatch_opt *optinst, unordered_map<std::s
         pars["W_dot_cycle"] = optinst->params.q_pb_des * optinst->params.eta_cycle_ref;
 
 		pars["delta_l"] = 0.2;
+
 		/***PV Hybrid parameters***/
 
 		//Battery parameters
@@ -814,21 +815,22 @@ bool csp_dispatch_opt::optimize()
 
 				col[t + nt * (i)] = O.column("ycsb", t);
 				row[t + nt * (i++)] = -(1. / pow(tadj, t)) * P["delta"] * P["Ccsb"] * P["Qb"];
-
+			if (params.pv_optimize && params.battery_optimize) {
 				col[t + nt * (i)] = O.column("wdot_pv", t);
 				row[t + nt * (i++)] = -(1. / pow(tadj, t)) * P["delta"] * P["Cpv"];
-
+			}
+			if (params.battery_optimize) {
 				col[t + nt * (i)] = O.column("wdot-", t);
 				row[t + nt * (i++)] = -(1. / pow(tadj, t)) * P["delta"] * P["Cbd"];
 
 				col[t + nt * (i)] = O.column("wdot+", t);
 				row[t + nt * (i++)] = -(1. / pow(tadj, t)) * P["delta"] * P["Cbc"];
 
-				col[t + nt * (i)] = O.column("xr", t);
-				row[t + nt * (i++)] = -(1. / pow(tadj, t)) * P["delta"] * P["Crec"];
-
 				col[t + nt * (i)] = O.column("bc", 0);
 				row[t + nt * (i++)] = -P["Cbl"];
+			}
+				col[t + nt * (i)] = O.column("xr", t);
+				row[t + nt * (i++)] = -(1. / pow(tadj, t)) * P["delta"] * P["Crec"];
 
 				//tadj *= P["disp_time_weighting"];
             }
@@ -1080,9 +1082,10 @@ bool csp_dispatch_opt::optimize()
 			{
 				int i = 0;
 				//power cycle generation less condenser parasitic power,
-				row[i] = 1.0 - outputs.w_condf_expected.at(t);
+				row[i] = (1.0 - outputs.w_condf_expected.at(t));
 				col[i++] = O.column("wdot", t);
 
+			if (params.battery_optimize) {
 				//battery discharge power accounting for DC-to-AC conversion losses
 				row[i] = 1.0 / (1.0 + params.beta_minus);
 				col[i++] = O.column("wdot-", t);
@@ -1094,14 +1097,19 @@ bool csp_dispatch_opt::optimize()
 				col[i++] = O.column("wdot+", t);
 				row[i] = -params.alpha_plus;
 				col[i++] = O.column("y+", t);
-
+			}
+			if (params.pv_optimize) {
 				//PV field generation less power used for battery charging directly from the field, accounting for inverter losses
 				row[i] = 1.0 / (1.0 + params.beta_pv);
 				col[i++] = O.column("wdot_pv", t);
-				row[i] = -1.0 / (1.0 + params.beta_pv);
-				col[i++] = O.column("wdot_pv+", t);
 				row[i] = -params.alpha_pv / (1.0 + params.beta_pv);
 				col[i++] = O.column("ypv", t);
+			}
+			if (params.battery_optimize && params.pv_optimize) {
+				//PV field generation less power used for battery charging directly from the field, accounting for inverter losses
+				row[i] = -1.0 / (1.0 + params.beta_pv);
+				col[i++] = O.column("wdot_pv+", t);
+			}
 
 				//TES pumping power requirements for receiver operations
 				row[i] = -P["Lr"];
@@ -1744,7 +1752,7 @@ bool csp_dispatch_opt::optimize()
 			}
 		}
 
-        //Energy in, out, and stored in the TES system must balance.	completed	CHECK THIS
+        //Energy in, out, and stored in the TES system must balance
         {
             REAL row[7];
             int col[7];
@@ -1944,407 +1952,408 @@ bool csp_dispatch_opt::optimize()
 		}
 
 		// ********************Photovoltaic Field Operations********************
-
-		//Allow for curtailment by imposing only an upper limit on PV field generation		completed
-		{
-			REAL row[2];
-			int col[2];
-
-			for (int t = 0; t < nt; t++)
+		if (params.pv_optimize) {
+			//Allow for curtailment by imposing only an upper limit on PV field generation		completed
 			{
-				row[0] = 1.;
-				col[0] = O.column("wdot_pv", t);
+				REAL row[2];
+				int col[2];
 
-				row[1] = -outputs.w_dc_field.at(t);
-				col[1] = O.column("ypv", t);
+				for (int t = 0; t < nt; t++)
+				{
+					row[0] = 1.;
+					col[0] = O.column("wdot_pv", t);
 
-				add_constraintex(lp, 2, row, col, LE, 0.);
+					row[1] = -outputs.w_dc_field.at(t);
+					col[1] = O.column("ypv", t);
+
+					add_constraintex(lp, 2, row, col, LE, 0.);
+				}
 			}
-		}
-
-		//Excess is lost (difference btwn power produced by PV & power sent to battery > inverter-rated power)
-		{
-			REAL row[3];
-			int col[3];
-
-			for (int t = 0; t < nt; t++)
+			//Excess is lost (difference btwn power produced by PV & power sent to battery > inverter-rated power)
 			{
-				row[0] = 1.;
-				col[0] = O.column("wdot_pv", t);
+				REAL row[3];
+				int col[3];
 
-				row[1] = -1.;
-				col[1] = O.column("wdot_pv+", t);
+				for (int t = 0; t < nt; t++)
+				{
+					row[0] = 1.;
+					col[0] = O.column("wdot_pv", t);
 
-				row[2] = -P["Wi"];
-				col[2] = O.column("ypv", t);
+					row[1] = -1.;
+					col[1] = O.column("wdot_pv+", t);
 
-				add_constraintex(lp, 3, row, col, LE, 0.);
+					row[2] = -P["Wi"];
+					col[2] = O.column("ypv", t);
+
+					add_constraintex(lp, 3, row, col, LE, 0.);
+				}
 			}
-		}
 
-		//Power sent to charge the battery directly from the PV field is limited by PV field generation		completed
-		{
-			REAL row[2];
-			int col[2];
-
-			for (int t = 0; t < nt; t++)
+			//Power sent to charge the battery directly from the PV field is limited by PV field generation		completed
 			{
-				row[0] = 1.;
-				col[0] = O.column("wdot_pv+", t);
+				REAL row[2];
+				int col[2];
 
-				row[1] = -1.;
-				col[1] = O.column("wdot_pv", t);
+				for (int t = 0; t < nt; t++)
+				{
+					row[0] = 1.;
+					col[0] = O.column("wdot_pv+", t);
 
-				add_constraintex(lp, 2, row, col, LE, 0.);
+					row[1] = -1.;
+					col[1] = O.column("wdot_pv", t);
+
+					add_constraintex(lp, 2, row, col, LE, 0.);
+				}
 			}
 		}
 
 		// ********************Battery Operations********************
-
-		//Representation of nonlinear relationships between power, current, and voltage for charging
-		{
-			REAL row[3];
-			int col[3];
-
-			for (int t = 0; t < nt; t++)
+		if (params.battery_optimize) {
+			//Representation of nonlinear relationships between power, current, and voltage for charging
 			{
-				row[0] = 1.;
-				col[0] = O.column("wdot+", t);
+				REAL row[3];
+				int col[3];
 
-				row[1] = 1.;
-				col[1] = O.column("wdot_pv+", t);
-
-				row[2] = -1.;
-				col[2] = (O.column("i+", t) * O.column("vsoc", t));
-
-				add_constraintex(lp, 3, row, col, EQ, 0.);
-			}
-		}
-
-		//Representation of nonlinear relationships between power, current, and voltage for discharging
-		{
-			REAL row[2];
-			int col[2];
-
-			for (int t = 0; t < nt; t++)
-			{
-				row[0] = 1.;
-				col[0] = O.column("wdot-", t);
-
-				row[1] = -1.;
-				col[1] = (O.column("i-", t) * O.column("vsoc", t));
-
-				add_constraintex(lp, 2, row, col, EQ, 0.);
-			}
-		}
-
-		//Update battery state of charge	complete
-		{
-			REAL row[4];
-			int col[4];
-
-			for (int t = 0; t < nt; t++)
-			{
-				row[0] = 1.;
-				col[0] = O.column("bsoc", t);
-
-				row[1] = -P["delta"] / P["Cb"];
-				col[1] = O.column("i+", t);
-
-				row[2] = P["delta"] / P["Cb"];
-				col[2] = O.column("i-", t);
-
-				if (t > 0) 
+				for (int t = 0; t < nt; t++)
 				{
-					row[3] = -1.;
-					col[3] = O.column("bsoc", t - 1);
+					row[0] = 1.;
+					col[0] = O.column("wdot+", t);
 
-					add_constraintex(lp, 4, row, col, EQ, 0.);
-				}
-				else
-				{
-					add_constraintex(lp, 3, row, col, EQ, P["bsoc0"]);
+					row[1] = 1.;
+					col[1] = O.column("wdot_pv+", t);
+
+					row[2] = -1.;
+					col[2] = (O.column("i+", t) * O.column("vsoc", t));
+
+					add_constraintex(lp, 3, row, col, EQ, 0.);
 				}
 			}
-		}
 
-		//Bounds for battery state of charge	complete
-		{
-			REAL row[1];
-			int col[1];
-
-			for (int t = 0; t < nt; t++)
+			//Representation of nonlinear relationships between power, current, and voltage for discharging
 			{
-				row[0] = 1.;
-				col[0] = O.column("bsoc", t);
+				REAL row[2];
+				int col[2];
 
-				add_constraintex(lp, 1, row, col, GE, P["Sb_min"]);
-
-				row[0] = 1.;
-				col[0] = O.column("bsoc", t);
-
-				add_constraintex(lp, 1, row, col, LE, P["Sb_max"]);
-			}
-		}
-
-		//Battery voltage
-		{
-			REAL row[6];
-			int col[6];
-
-			for (int t = 0; t < nt; t++)
-			{
-				int i = 0;
-
-				if (t > 0)
+				for (int t = 0; t < nt; t++)
 				{
-					row[i] = 1.;
-					col[i++] = O.column("vsoc", t);
+					row[0] = 1.;
+					col[0] = O.column("wdot-", t);
 
-					row[i] = -P["Av"];
-					col[i++] = O.column("bsoc", t - 1);
+					row[1] = -1.;
+					col[1] = (O.column("i-", t) * O.column("vsoc", t));
 
-					row[i] = -P["Bv"];
-					col[i++] = O.column("y+", t);
-
-					row[i] = -P["Bv"];
-					col[i++] = O.column("y-", t);
-
-					row[i] = -P["Iavg"] * P["Rint"];
-					col[i++] = O.column("y+", t);
-
-					row[i] = P["Iavg"] * P["Rint"];
-					col[i++] = O.column("y-", t);
-
-					add_constraintex(lp, i, row, col, EQ, 0.);
+					add_constraintex(lp, 2, row, col, EQ, 0.);
 				}
 			}
-		}
 
-		//Net power flow bounds		completed
-		{
-			REAL row[2];
-			int col[2];
-
-			for (int t = 0; t < nt; t++)
+			//Update battery state of charge	complete
 			{
-				row[0] = 1.;
-				col[0] = O.column("wdot-", t);
+				REAL row[4];
+				int col[4];
 
-				row[1] = -P["Pb_min"];
-				col[1] = O.column("y-", t);
-
-				add_constraintex(lp, 2, row, col, GE, 0.);
-
-				row[0] = 1.;
-				col[0] = O.column("wdot-", t);
-
-				row[1] = -P["Pb_max"];
-				col[1] = O.column("y-", t);
-
-				add_constraintex(lp, 2, row, col, LE, 0.);
-			}
-		}
-
-		//Net power flow bounds (2)		completed
-		{
-			REAL row[3];
-			int col[3];
-
-			for (int t = 0; t < nt; t++)
-			{
-				row[0] = 1.;
-				col[0] = O.column("wdot+", t);
-
-				row[1] = 1.;
-				col[1] = O.column("wdot_pv+", t);
-
-				row[2] = -P["Pb_min"];
-				col[2] = O.column("y+", t);
-
-				add_constraintex(lp, 3, row, col, GE, 0.);
-
-				row[0] = 1.;
-				col[0] = O.column("wdot+", t);
-
-				row[1] = 1.;
-				col[1] = O.column("wdot_pv+", t);
-
-				row[2] = -P["Pb_max"];
-				col[2] = O.column("y+", t);
-
-				add_constraintex(lp, 3, row, col, LE, 0.);
-			}
-		}
-
-		//Restrict current flow		completed
-		{
-			REAL row[2];
-			int col[2];
-
-			for (int t = 0; t < nt; t++)
-			{
-				row[0] = 1.;
-				col[0] = O.column("i-", t);
-
-				if (t > 0)
+				for (int t = 0; t < nt; t++)
 				{
-					row[1] = -P["Iu-"];
-					col[1] = O.column("bsoc", t - 1);
+					row[0] = 1.;
+					col[0] = O.column("bsoc", t);
+
+					row[1] = -P["delta"] / P["Cb"];
+					col[1] = O.column("i+", t);
+
+					row[2] = P["delta"] / P["Cb"];
+					col[2] = O.column("i-", t);
+
+					if (t > 0)
+					{
+						row[3] = -1.;
+						col[3] = O.column("bsoc", t - 1);
+
+						add_constraintex(lp, 4, row, col, EQ, 0.);
+					}
+					else
+					{
+						add_constraintex(lp, 3, row, col, EQ, P["bsoc0"]);
+					}
+				}
+			}
+
+			//Bounds for battery state of charge	complete
+			{
+				REAL row[1];
+				int col[1];
+
+				for (int t = 0; t < nt; t++)
+				{
+					row[0] = 1.;
+					col[0] = O.column("bsoc", t);
+
+					add_constraintex(lp, 1, row, col, GE, P["Sb_min"]);
+
+					row[0] = 1.;
+					col[0] = O.column("bsoc", t);
+
+					add_constraintex(lp, 1, row, col, LE, P["Sb_max"]);
+				}
+			}
+
+			//Battery voltage
+			{
+				REAL row[6];
+				int col[6];
+
+				for (int t = 0; t < nt; t++)
+				{
+					int i = 0;
+
+					if (t > 0)
+					{
+						row[i] = 1.;
+						col[i++] = O.column("vsoc", t);
+
+						row[i] = -P["Av"];
+						col[i++] = O.column("bsoc", t - 1);
+
+						row[i] = -P["Bv"];
+						col[i++] = O.column("y+", t);
+
+						row[i] = -P["Bv"];
+						col[i++] = O.column("y-", t);
+
+						row[i] = -P["Iavg"] * P["Rint"];
+						col[i++] = O.column("y+", t);
+
+						row[i] = P["Iavg"] * P["Rint"];
+						col[i++] = O.column("y-", t);
+
+						add_constraintex(lp, i, row, col, EQ, 0.);
+					}
+				}
+			}
+
+			//Net power flow bounds		completed
+			{
+				REAL row[2];
+				int col[2];
+
+				for (int t = 0; t < nt; t++)
+				{
+					row[0] = 1.;
+					col[0] = O.column("wdot-", t);
+
+					row[1] = -P["Pb_min"];
+					col[1] = O.column("y-", t);
+
+					add_constraintex(lp, 2, row, col, GE, 0.);
+
+					row[0] = 1.;
+					col[0] = O.column("wdot-", t);
+
+					row[1] = -P["Pb_max"];
+					col[1] = O.column("y-", t);
 
 					add_constraintex(lp, 2, row, col, LE, 0.);
 				}
-				else
+			}
+
+			//Net power flow bounds (2)		completed
+			{
+				REAL row[3];
+				int col[3];
+
+				for (int t = 0; t < nt; t++)
 				{
-					add_constraintex(lp, 1, row, col, LE, P["Iu-"] * P["bsoc0"]);
+					row[0] = 1.;
+					col[0] = O.column("wdot+", t);
+
+					row[1] = 1.;
+					col[1] = O.column("wdot_pv+", t);
+
+					row[2] = -P["Pb_min"];
+					col[2] = O.column("y+", t);
+
+					add_constraintex(lp, 3, row, col, GE, 0.);
+
+					row[0] = 1.;
+					col[0] = O.column("wdot+", t);
+
+					row[1] = 1.;
+					col[1] = O.column("wdot_pv+", t);
+
+					row[2] = -P["Pb_max"];
+					col[2] = O.column("y+", t);
+
+					add_constraintex(lp, 3, row, col, LE, 0.);
 				}
 			}
-		}
 
-		//Restrict current flow (2)		completed
-		{
-			REAL row[2];
-			int col[2];
-
-			for (int t = 0; t < nt; t++)
+			//Restrict current flow		completed
 			{
-				row[0] = 1.;
-				col[0] = O.column("i+", t);
+				REAL row[2];
+				int col[2];
 
-				if (t > 0) {
-					row[1] = P["Cb"] / P["delta"];
-					col[1] = O.column("bsoc", t - 1);
-
-					add_constraintex(lp, 2, row, col, LE, P["Cb"] / P["delta"]);
-				}
-				else
+				for (int t = 0; t < nt; t++)
 				{
-					//add_constraintex(lp, 1, row, col, LE, (P["Cb"] - (P["Cb"] * P["bsoc0"])) / P["delta"]);
-					add_constraintex(lp, 1, row, col, LE, P["Cb"] * ((1 - P["bsoc0"]) / P["delta"]));
+					row[0] = 1.;
+					col[0] = O.column("i-", t);
+
+					if (t > 0)
+					{
+						row[1] = -P["Iu-"];
+						col[1] = O.column("bsoc", t - 1);
+
+						add_constraintex(lp, 2, row, col, LE, 0.);
+					}
+					else
+					{
+						add_constraintex(lp, 1, row, col, LE, P["Iu-"] * P["bsoc0"]);
+					}
 				}
 			}
-		}
 
-		//Restrict current flow (3)		completed
-		{
-			REAL row[2];
-			int col[2];
-
-			for (int t = 0; t < nt; t++)
+			//Restrict current flow (2)		completed
 			{
-				row[0] = 1.;
-				col[0] = O.column("i-", t);
+				REAL row[2];
+				int col[2];
 
-				row[1] = -P["Il-"];
-				col[1] = O.column("y-", t);
-
-				add_constraintex(lp, 2, row, col, GE, 0.);
-
-				row[0] = 1.;
-				col[0] = O.column("i-", t);
-
-				row[1] = -P["Iu-"];
-				col[1] = O.column("y-", t);
-
-				add_constraintex(lp, 2, row, col, LE, 0.);
-			}
-		}
-        
-		//Restrict current flow (4)		completed
-		{
-			REAL row[2];
-			int col[2];
-
-			for (int t = 0; t < nt; t++)
-			{
-				row[0] = 1.;
-				col[0] = O.column("i+", t);
-
-				row[1] = -P["Il+"];
-				col[1] = O.column("y+", t);
-
-				add_constraintex(lp, 2, row, col, GE, 0.);
-
-				row[0] = 1.;
-				col[0] = O.column("i+", t);
-
-				row[1] = -P["Iu+"];
-				col[1] = O.column("y+", t);
-
-				add_constraintex(lp, 2, row, col, LE, 0.);
-			}
-		}
-
-		//Battery cannot be charging and discharging simultaneously		completed
-		{
-			REAL row[2];
-			int col[2];
-
-			for (int t = 0; t < nt; t++)
-			{
-				row[0] = 1.;
-				col[0] = O.column("y+", t);
-
-				row[1] = 1.;
-				col[1] = O.column("y-", t);
-
-				add_constraintex(lp, 2, row, col, LE, 1.);
-			}
-		}
-
-		//Battery cycle bound	completed
-		{
-			REAL row[1];
-			int col[1];
-
-			row[0] = 1.;
-			col[0] = O.column("bc", 0);
-
-			add_constraintex(lp, 1, row, col, GE, 0.);
-		}
-
-		//Measure battery cycle count	completed
-		{
-			REAL row[1];
-			int col[1];
-
-			double tadj = P["disp_time_weighting"];
-
-			//rewritten starting line 2327
-			/*for (int t = 0; t < nt; t++)
-			{
-				int i = 0;
-
-				row[i] = 1.;
-				col[i++] = O.column("bc", t);
-
-				row[i] = (-P["delta"] * tadj) / P["Cb"];
-				col[i++] = O.column("i+", t);
-
-				if (t > 0)
+				for (int t = 0; t < nt; t++)
 				{
+					row[0] = 1.;
+					col[0] = O.column("i+", t);
+
+					if (t > 0) {
+						row[1] = P["Cb"] / P["delta"];
+						col[1] = O.column("bsoc", t - 1);
+
+						add_constraintex(lp, 2, row, col, LE, P["Cb"] / P["delta"]);
+					}
+					else
+					{
+						//add_constraintex(lp, 1, row, col, LE, (P["Cb"] - (P["Cb"] * P["bsoc0"])) / P["delta"]);
+						add_constraintex(lp, 1, row, col, LE, P["Cb"] * ((1 - P["bsoc0"]) / P["delta"]));
+					}
+				}
+			}
+
+			//Restrict current flow (3)		completed
+			{
+				REAL row[2];
+				int col[2];
+
+				for (int t = 0; t < nt; t++)
+				{
+					row[0] = 1.;
+					col[0] = O.column("i-", t);
+
+					row[1] = -P["Il-"];
+					col[1] = O.column("y-", t);
+
+					add_constraintex(lp, 2, row, col, GE, 0.);
+
+					row[0] = 1.;
+					col[0] = O.column("i-", t);
+
+					row[1] = -P["Iu-"];
+					col[1] = O.column("y-", t);
+
+					add_constraintex(lp, 2, row, col, LE, 0.);
+				}
+			}
+
+			//Restrict current flow (4)		completed
+			{
+				REAL row[2];
+				int col[2];
+
+				for (int t = 0; t < nt; t++)
+				{
+					row[0] = 1.;
+					col[0] = O.column("i+", t);
+
+					row[1] = -P["Il+"];
+					col[1] = O.column("y+", t);
+
+					add_constraintex(lp, 2, row, col, GE, 0.);
+
+					row[0] = 1.;
+					col[0] = O.column("i+", t);
+
+					row[1] = -P["Iu+"];
+					col[1] = O.column("y+", t);
+
+					add_constraintex(lp, 2, row, col, LE, 0.);
+				}
+			}
+
+			//Battery cannot be charging and discharging simultaneously		completed
+			{
+				REAL row[2];
+				int col[2];
+
+				for (int t = 0; t < nt; t++)
+				{
+					row[0] = 1.;
+					col[0] = O.column("y+", t);
+
+					row[1] = 1.;
+					col[1] = O.column("y-", t);
+
+					add_constraintex(lp, 2, row, col, LE, 1.);
+				}
+			}
+
+			//Battery cycle bound	completed
+			{
+				REAL row[1];
+				int col[1];
+
+				row[0] = 1.;
+				col[0] = O.column("bc", 0);
+
+				add_constraintex(lp, 1, row, col, GE, 0.);
+			}
+
+			//Measure battery cycle count	completed
+			{
+				REAL row[1];
+				int col[1];
+
+				double tadj = P["disp_time_weighting"];
+
+				//rewritten starting line 2327
+				/*for (int t = 0; t < nt; t++)
+				{
+					int i = 0;
+
+					row[i] = 1.;
+					col[i++] = O.column("bc", t);
+
 					row[i] = (-P["delta"] * tadj) / P["Cb"];
-					col[i++] = O.column("i+", t)*O.column("bsoc", t-1);
-				}
-				add_constraintex(lp, i, row, col, GE, 0.);
-			}*/
-			double sum = 0.0;
-			for (int t = 0; t < nt; t++)
-			{
-				if (t > 0)
+					col[i++] = O.column("i+", t);
+
+					if (t > 0)
+					{
+						row[i] = (-P["delta"] * tadj) / P["Cb"];
+						col[i++] = O.column("i+", t)*O.column("bsoc", t-1);
+					}
+					add_constraintex(lp, i, row, col, GE, 0.);
+				}*/
+				double sum = 0.0;
+				for (int t = 0; t < nt; t++)
 				{
-					sum += pow(tadj, t) * (O.column("i+", t) - (O.column("i+", t) * O.column("bsoc", t - 1)));
+					if (t > 0)
+					{
+						sum += pow(tadj, t) * (O.column("i+", t) - (O.column("i+", t) * O.column("bsoc", t - 1)));
+					}
+					else
+						sum += pow(tadj, t) * (O.column("i+", t) - (O.column("i+", t) * -P["bsoc0"]));
 				}
-				else
-					sum += pow(tadj, t) * (O.column("i+", t) - (O.column("i+", t) * -P["bsoc0"]));
+
+				sum = sum * (P["delta"] / P["Cb"]);
+
+				row[0] = 1.;
+				col[0] = O.column("bc", 0);
+
+				add_constraintex(lp, 1, row, col, GE, sum);
 			}
-
-			sum = sum * (P["delta"] / P["Cb"]);
-
-			row[0] = 1.;
-			col[0] = O.column("bc", 0);
-
-			add_constraintex(lp, 1, row, col, GE, sum);
 		}
 
 		params.counter++;	
