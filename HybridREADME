@@ -1,0 +1,4 @@
+Before running sdktool, check:
+
+-Make sure the folder 'pv_data' is copied and pasted into the location of your .lk script file.
+-Line 2513 and 2521 of csp_dispatch.cpp - change output file destination to your custom location.
