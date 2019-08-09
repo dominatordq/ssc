@@ -679,7 +679,6 @@ bool csp_dispatch_opt::optimize()
             }
         }
 
-		//check Qin and Qrl?
 		//still working on this
 		int tempCount = floor(params.counter / 2.0);	//counter used to track number of PV_data_<tempCount>.dat file; since params.counter increments by two for each time period
 		string line;	//arbitrary line string
